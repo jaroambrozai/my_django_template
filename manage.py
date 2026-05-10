@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # manage.py
 
+# IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+# PyCharm: Run > Edit Configurations > Environment variables
+# DJANGO_SETTINGS_MODULE=config.settings
+# IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
 import os
 import sys
 
