@@ -37,3 +37,6 @@ venv/
 # os
 .DS_Store
 Thumbs.db
+
+# project init
+init_django.bat
