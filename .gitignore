@@ -13,7 +13,14 @@ build/
 local_settings.py
 db.sqlite3
 staticfiles/
-media/
+
+# media
+media/*
+!media/.gitkeep
+
+# staticfiles
+staticfiles/*
+!staticfiles/.gitkeep
 
 # env
 .env
