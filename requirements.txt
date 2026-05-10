@@ -1,0 +1,12 @@
+# base
+Django>=6.0
+python-dotenv
+
+# dev
+pytest-django
+django-debug-toolbar
+
+# prod
+gunicorn
+psycopg2-binary
+whitenoise
