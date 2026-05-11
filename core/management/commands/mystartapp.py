@@ -1,9 +1,13 @@
 # core/management/commands/mystartapp.py
 
 import os
-import re
 from django.core.management.base import BaseCommand
 from django.conf import settings
+
+BS = "{" + "%"
+BE = "%" + "}"
+VS = "{" + "{"
+VE = "}" + "}"
 
 
 class Command(BaseCommand):
@@ -14,40 +18,32 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         app_name = options["app_name"]
+        model_name = input("Model name (e.g. Article): ").strip()
+
         base_dir = settings.BASE_DIR
         apps_dir = base_dir / "apps"
         app_dir = apps_dir / app_name
 
-        # 1. vytvorit apps/ ak neexistuje
         if not apps_dir.exists():
             apps_dir.mkdir()
             self.stdout.write(self.style.SUCCESS("Created apps/"))
 
-        # 2. skontrolovat ci app uz existuje
         if app_dir.exists():
             self.stderr.write(self.style.ERROR(f"App '{app_name}' already exists."))
             return
 
-        # 3. vytvorit strukturu app
         app_dir.mkdir()
         (app_dir / "migrations").mkdir()
         (app_dir / "migrations" / "__init__.py").touch()
 
-        # 4. zapisat subory
         self._write_init(app_dir)
         self._write_apps(app_dir, app_name)
-        self._write_models(app_dir, app_name)
-        self._write_views(app_dir, app_name)
-        self._write_urls(app_dir, app_name)
-        self._write_admin(app_dir, app_name)
-
-        # 5. vytvorit templates
-        self._write_templates(base_dir, app_name)
-
-        # 6. pridať do INSTALLED_APPS
+        self._write_models(app_dir, app_name, model_name)
+        self._write_views(app_dir, app_name, model_name)
+        self._write_urls(app_dir, app_name, model_name)
+        self._write_admin(app_dir, app_name, model_name)
+        self._write_templates(base_dir, app_name, model_name)
         self._add_to_installed_apps(base_dir, app_name)
-
-        # 7. pridať do config/urls.py
         self._add_to_urls(base_dir, app_name)
 
         self.stdout.write(self.style.SUCCESS(f"App '{app_name}' created successfully."))
@@ -67,85 +63,90 @@ class {class_name}(AppConfig):
 """
         (app_dir / "apps.py").write_text(content)
 
-    def _write_models(self, app_dir, app_name):
-        class_name = app_name.capitalize()
+    def _write_models(self, app_dir, app_name, model_name):
         content = f"""from django.db import models
 
 
-class {class_name}(models.Model):
+class {model_name}(models.Model):
     title = models.CharField(max_length=255)
 
     class Meta:
-        verbose_name = "{app_name.capitalize()}"
-        verbose_name_plural = "{app_name.capitalize()}s"
+        verbose_name = "{model_name}"
+        verbose_name_plural = "{model_name}s"
 
     def __str__(self):
         return self.title
 """
         (app_dir / "models.py").write_text(content)
 
-    def _write_views(self, app_dir, app_name):
-        class_name = app_name.capitalize()
+    def _write_views(self, app_dir, app_name, model_name):
         content = f"""from django.views.generic import ListView, DetailView, TemplateView
-from .models import {class_name}
+from .models import {model_name}
 
 
-class {class_name}ListView(ListView):
-    model = {class_name}
+class {model_name}ListView(ListView):
+    model = {model_name}
     template_name = "{app_name}/{app_name}_list.html"
     context_object_name = "{app_name}_list"
 
 
-class {class_name}DetailView(DetailView):
-    model = {class_name}
+class {model_name}DetailView(DetailView):
+    model = {model_name}
     template_name = "{app_name}/{app_name}_detail.html"
     context_object_name = "{app_name}"
 
 
-class {class_name}TemplateView(TemplateView):
+class {model_name}TemplateView(TemplateView):
     template_name = "{app_name}/{app_name}_template.html"
 """
         (app_dir / "views.py").write_text(content)
 
-    def _write_urls(self, app_dir, app_name):
-        class_name = app_name.capitalize()
+    def _write_urls(self, app_dir, app_name, model_name):
         content = f"""from django.urls import path
 from . import views
 
 app_name = "{app_name}"
 
 urlpatterns = [
-    path("", views.{class_name}ListView.as_view(), name="list"),
-    path("<int:pk>/", views.{class_name}DetailView.as_view(), name="detail"),
-    path("info/", views.{class_name}TemplateView.as_view(), name="template"),
+    path("", views.{model_name}ListView.as_view(), name="list"),
+    path("<int:pk>/", views.{model_name}DetailView.as_view(), name="detail"),
+    path("info/", views.{model_name}TemplateView.as_view(), name="template"),
 ]
 """
         (app_dir / "urls.py").write_text(content)
 
-    def _write_admin(self, app_dir, app_name):
-        class_name = app_name.capitalize()
+    def _write_admin(self, app_dir, app_name, model_name):
         content = f"""from django.contrib import admin
-from .models import {class_name}
+from .models import {model_name}
 
 
-@admin.register({class_name})
-class {class_name}Admin(admin.ModelAdmin):
+@admin.register({model_name})
+class {model_name}Admin(admin.ModelAdmin):
     list_display = ["title"]
 """
         (app_dir / "admin.py").write_text(content)
 
-    def _write_templates(self, base_dir, app_name):
+    def _write_templates(self, base_dir, app_name, model_name):
         template_dir = base_dir / "templates" / app_name
         template_dir.mkdir(parents=True, exist_ok=True)
 
         (template_dir / f"{app_name}_list.html").write_text(
-            f"{{% extends 'base.html' %}}\n\n{{% block content %}}\n<h1>{app_name.capitalize()} list</h1>\n{{% endblock %}}\n"
+            f'{BS} extends "base.html" {BE}\n\n'
+            f'{BS} block content {BE}\n'
+            f'<h1>{model_name} list</h1>\n'
+            f'{BS} endblock {BE}\n'
         )
         (template_dir / f"{app_name}_detail.html").write_text(
-            f"{{% extends 'base.html' %}}\n\n{{% block content %}}\n<h1>{{{{ {app_name}.title }}}}</h1>\n{{% endblock %}}\n"
+            f'{BS} extends "base.html" {BE}\n\n'
+            f'{BS} block content {BE}\n'
+            f'<h1>{VS} {app_name}.title {VE}</h1>\n'
+            f'{BS} endblock {BE}\n'
         )
         (template_dir / f"{app_name}_template.html").write_text(
-            f"{{% extends 'base.html' %}}\n\n{{% block content %}}\n<h1>{app_name.capitalize()} info</h1>\n{{% endblock %}}\n"
+            f'{BS} extends "base.html" {BE}\n\n'
+            f'{BS} block content {BE}\n'
+            f'<h1>{model_name} info</h1>\n'
+            f'{BS} endblock {BE}\n'
         )
 
     def _add_to_installed_apps(self, base_dir, app_name):
@@ -157,8 +158,8 @@ class {class_name}Admin(admin.ModelAdmin):
             return
 
         content = content.replace(
-            "    # local",
-            f"    # local\n    {app_string},"
+            '"core.apps.CoreConfig",',
+            f'"core.apps.CoreConfig",\n    {app_string},'
         )
         settings_path.write_text(content)
 
