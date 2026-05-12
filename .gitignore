@@ -40,3 +40,5 @@ Thumbs.db
 
 # project init
 init_django.bat
+
+.pws
